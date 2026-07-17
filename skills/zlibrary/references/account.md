@@ -23,6 +23,8 @@ export ZLIB_EMAIL="..."
 export ZLIB_PASSWORD="..."
 ```
 
+命令行参数 `--remix-userid/--remix-userkey` 或 `--email/--password` 覆盖环境变量。
+
 ## 命令
 
 ```bash
@@ -32,7 +34,11 @@ python3 <skill_dir>/scripts/zlibrary_cli.py profile
 
 ## 规则
 
-1. 不要在回复中打印密码、token、`remix_userkey`。
-2. `profile` 输出会遮蔽 key/token/password 字段。
-3. 下载前优先调用 `quota` 或 `getDownloadsLeft()`。
-4. 如果登录失败，只提示用户检查凭据或镜像域名，不回显凭据。
+1. 输出只使用遮蔽后的密码、token 和 `remix_userkey`。
+2. 下载前调用 `quota` 或 `getDownloadsLeft()`；`null` 或查询错误表示额度未知，不等于 `0`。
+3. 登录失败时提示检查凭据或镜像域名，只返回非敏感错误信息。
+
+## 完成条件
+
+- `quota`：返回明确的剩余额度；查询失败则明确报告未知。
+- `profile`：返回资料且所有 key、token、password 字段均已遮蔽。

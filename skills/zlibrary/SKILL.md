@@ -1,6 +1,6 @@
 ---
 name: zlibrary
-description: "Use when the user wants Z-Library/Zlibrary book workflows: search books, inspect metadata by id/hash, download a chosen book, check profile or remaining quota, compare candidate formats, or use the bundled Zlibrary.py API wrapper."
+description: "Use when the user wants a Z-Library book workflow: search, inspect metadata or formats, download a chosen book, check an account profile or quota, or use the bundled API wrapper."
 ---
 
 # Zlibrary
@@ -19,26 +19,12 @@ description: "Use when the user wants Z-Library/Zlibrary book workflows: search 
 
 ## 通用规则
 
-1. 根据用户意图先读对应 `references/*.md`，不要只凭方法名猜参数。
-2. 不要修改 `scripts/Zlibrary.py`。新增能力时在 `scripts/` 包一层，继续 import 基础库。
-3. 不要在回复里展示密码、token、`remix_userkey` 等秘密。
+1. 根据用户意图先读对应 `references/*.md`；该分支的完成条件也在对应 reference 中。
+2. 保持 `scripts/Zlibrary.py` 原样；新增能力在 `scripts/` 包装并 import 基础库。
+3. 输出只包含遮蔽后的鉴权信息。
 4. 下载前先让用户从搜索结果里确认目标，除非用户已经给出明确的 `id` 和 `hash`。
 5. 搜索结果默认用编号表格展示，方便用户后续说"下载第 2 本"。
 
 ## 鉴权
 
-优先使用 token：
-
-```bash
-export ZLIBRARY_REMIX_USERID="..."
-export ZLIBRARY_REMIX_USERKEY="..."
-```
-
-也支持邮箱密码：
-
-```bash
-export ZLIBRARY_EMAIL="..."
-export ZLIBRARY_PASSWORD="..."
-```
-
-命令行参数 `--remix-userid/--remix-userkey` 或 `--email/--password` 会覆盖环境变量。
+调用 Z-Library 网络接口时需要鉴权，先读 `references/account.md`。只查看本地 API、运行 self-check 或修改包装代码时不索取凭据。

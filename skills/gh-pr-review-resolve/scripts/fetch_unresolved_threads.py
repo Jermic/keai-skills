@@ -8,10 +8,11 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 
 QUERY = """
-query($owner:String!, $name:String!, $number:Int!) {
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
     pullRequest(number:$number) {
       number
@@ -19,7 +20,7 @@ query($owner:String!, $name:String!, $number:Int!) {
       url
       reviewDecision
       mergeStateStatus
-      reviewThreads(first:100) {
+      reviewThreads(first:100, after:$endCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id
@@ -30,7 +31,8 @@ query($owner:String!, $name:String!, $number:Int!) {
           originalLine
           startLine
           originalStartLine
-          comments(first:30) {
+          comments(first:100) {
+            totalCount
             nodes {
               databaseId
               url
@@ -57,6 +59,37 @@ class PullRequestRef:
 
 def run(cmd: list[str]) -> str:
   return subprocess.check_output(cmd, text=True).strip()
+
+
+def parse_paginated_json(output: str) -> list[dict[str, Any]]:
+  decoder = json.JSONDecoder()
+  documents: list[dict[str, Any]] = []
+  index = 0
+  while index < len(output):
+    while index < len(output) and output[index].isspace():
+      index += 1
+    if index < len(output):
+      document, index = decoder.raw_decode(output, index)
+      documents.append(document)
+  return documents
+
+
+def collect_threads(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+  threads = []
+  for page in pages:
+    page_pr = page["data"]["repository"]["pullRequest"]
+    threads.extend(page_pr["reviewThreads"]["nodes"])
+  return threads
+
+
+def complete_comments(thread: dict[str, Any]) -> list[dict[str, Any]]:
+  connection = thread["comments"]
+  if connection["totalCount"] > len(connection["nodes"]):
+    raise SystemExit(
+      f"Review thread {thread['id']} has more than 100 comments; "
+      "refusing to return a truncated result."
+    )
+  return connection["nodes"]
 
 
 def repo_from_git() -> tuple[str, str]:
@@ -133,6 +166,7 @@ def fetch(pr: PullRequestRef) -> dict:
       "gh",
       "api",
       "graphql",
+      "--paginate",
       "-F",
       f"owner={pr.owner}",
       "-F",
@@ -143,10 +177,17 @@ def fetch(pr: PullRequestRef) -> dict:
       f"query={QUERY}",
     ]
   )
-  data = json.loads(raw)["data"]["repository"]["pullRequest"]
-  threads = data["reviewThreads"]["nodes"]
+  pages = parse_paginated_json(raw)
+  if not pages:
+    raise SystemExit("GitHub returned no GraphQL pages.")
+
+  data = pages[0]["data"]["repository"]["pullRequest"]
+  if data is None:
+    raise SystemExit(f"Pull request not found: {pr.owner}/{pr.repo}#{pr.number}")
+
+  threads = collect_threads(pages)
   for thread in threads:
-    comments = thread["comments"]["nodes"]
+    comments = complete_comments(thread)
     latest_comment = max(comments, key=lambda comment: comment["updatedAt"]) if comments else None
     thread["commentCount"] = len(comments)
     thread["latestCommentAt"] = latest_comment["updatedAt"] if latest_comment else None
@@ -160,7 +201,28 @@ def fetch(pr: PullRequestRef) -> dict:
   return data
 
 
+def self_check() -> int:
+  documents = parse_paginated_json('{"page":1}\n{"page":2}\n')
+  assert documents == [{"page": 1}, {"page": 2}]
+  assert parse_ref("owner/repo#12") == PullRequestRef("owner", "repo", 12)
+  pages = [
+    {"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": [{"id": "one"}]}}}}},
+    {"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": [{"id": "two"}]}}}}},
+  ]
+  assert [thread["id"] for thread in collect_threads(pages)] == ["one", "two"]
+  try:
+    complete_comments({"id": "long", "comments": {"totalCount": 2, "nodes": [{}]}})
+  except SystemExit:
+    pass
+  else:
+    raise AssertionError("truncated comments were accepted")
+  print("self-check passed")
+  return 0
+
+
 def main() -> int:
+  if sys.argv[1:] == ["--self-check"]:
+    return self_check()
   pr = parse_ref(sys.argv[1] if len(sys.argv) > 1 else None)
   result = fetch(pr)
   json.dump(result, sys.stdout, ensure_ascii=False, indent=2)

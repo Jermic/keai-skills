@@ -27,3 +27,7 @@ python3 <skill_dir>/scripts/zlibrary_cli.py search "deep learning" --language en
 2. 展示编号表格，至少包含书名、作者、年份、语言、格式、大小、`id/hash`。
 3. 如果用户后续要下载，必须用同一轮结果里的 `id` 和 `hash`，不要只按标题重新猜。
 4. 需要排查字段缺失时用 `--json --raw`。
+
+## 完成条件
+
+查询条件已应用，每个候选项都有稳定编号，并保留该轮结果的 `id/hash`；无结果时明确报告空结果。

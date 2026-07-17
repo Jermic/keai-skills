@@ -12,12 +12,15 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from Zlibrary import Zlibrary  # noqa: E402
 
 DEFAULT_DOMAIN = "z-library.sk"
 
 
-def make_api(args: argparse.Namespace) -> Zlibrary:
+def make_api(args: argparse.Namespace) -> Any:
+    try:
+        from Zlibrary import Zlibrary
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("the bundled Zlibrary.py requires the requests package") from exc
     api = Zlibrary()
     domain = (args.domain or DEFAULT_DOMAIN).strip().removeprefix("https://").removeprefix("http://").rstrip("/")
     if domain:
@@ -74,21 +77,34 @@ def cmd_info(args: argparse.Namespace) -> None:
 
 
 def cmd_download(args: argparse.Namespace) -> None:
+    output_dir = Path(args.output).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    requested_target = output_dir / safe_filename(args.filename) if args.filename else None
+    if requested_target and requested_target.exists() and not args.force:
+        raise FileExistsError(f"target already exists: {requested_target}; pass --force to overwrite")
+
     api = make_api(args)
     if not args.skip_quota_check:
         left = safe_downloads_left(api)
-        if left is not None and left <= 0:
+        if left is None:
+            raise RuntimeError("download quota check failed; use --skip-quota-check to proceed")
+        if left <= 0:
             raise RuntimeError("download quota is exhausted")
     filename, content = api.downloadBook({"id": args.id, "hash": args.hash})
-    output_dir = Path(args.output).expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / safe_filename(args.filename or filename)
+    if not content:
+        raise RuntimeError("download returned an empty file")
+    target = requested_target or output_dir / safe_filename(filename)
+    if target.exists() and not args.force:
+        target = available_path(target)
     target.write_bytes(content)
     print_json({"status": "ok", "path": str(target), "size": len(content), "downloads_left": safe_downloads_left(api)})
 
 
 def cmd_quota(args: argparse.Namespace) -> None:
-    print_json({"downloads_left": safe_downloads_left(make_api(args))})
+    left = safe_downloads_left(make_api(args))
+    if left is None:
+        raise RuntimeError("download quota is unavailable")
+    print_json({"downloads_left": left})
 
 
 def cmd_profile(args: argparse.Namespace) -> None:
@@ -97,7 +113,7 @@ def cmd_profile(args: argparse.Namespace) -> None:
     print_json(mask_secrets(response))
 
 
-def safe_downloads_left(api: Zlibrary) -> int | None:
+def safe_downloads_left(api: Any) -> int | None:
     try:
         value = api.getDownloadsLeft()
         return int(value) if value is not None else None
@@ -177,6 +193,15 @@ def safe_filename(filename: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', "_", filename)
 
 
+def available_path(target: Path) -> Path:
+    index = 2
+    while True:
+        candidate = target.with_name(f"{target.stem}-{index}{target.suffix}")
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
 def mask_secrets(data: Any) -> Any:
     if isinstance(data, dict):
         return {
@@ -231,6 +256,7 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("-o", "--output", default=str(Path.home() / "Downloads"))
     download.add_argument("--filename")
     download.add_argument("--skip-quota-check", action="store_true")
+    download.add_argument("--force", action="store_true", help="Overwrite an existing target file")
     download.set_defaults(func=cmd_download)
 
     quota = sub.add_parser("quota", help="Show remaining download quota")
@@ -243,7 +269,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def self_check() -> int:
+    from tempfile import TemporaryDirectory
+
+    args = build_parser().parse_args(["download", "--id", "1", "--hash", "abc", "--force"])
+    assert args.force is True
+    assert safe_filename('a:b?.pdf') == "a_b_.pdf"
+    assert mask_secrets({"token": "secret"}) == {"token": "***"}
+    with TemporaryDirectory() as directory:
+        target = Path(directory) / "book.pdf"
+        target.write_bytes(b"old")
+        assert available_path(target).name == "book-2.pdf"
+    print("self-check passed")
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--self-check"]:
+        return self_check()
     args = build_parser().parse_args()
     try:
         args.func(args)

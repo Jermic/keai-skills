@@ -2,7 +2,7 @@
 
 ## 本地基础库
 
-`scripts/Zlibrary.py` 是基础 API 库，保持原样不改。新增能力应在 `scripts/` 新增包装代码。
+`scripts/Zlibrary.py` 是基础 API 库。新增能力在 `scripts/` 新增包装代码。
 
 ## 常用方法
 
@@ -34,3 +34,7 @@ python3 <skill_dir>/scripts/zlibrary_cli.py profile
 ```
 
 未封装的方法，先在任务中直接 import `scripts/Zlibrary.py` 验证调用，再考虑是否补进 `scripts/zlibrary_cli.py`。
+
+## 完成条件
+
+调用结果已验证，所用方法和参数与基础库签名一致；只有稳定且重复使用的能力才增加 CLI 包装。

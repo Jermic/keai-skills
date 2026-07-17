@@ -41,41 +41,21 @@ Description rules:
 
 ## Script Paths
 
-In `SKILL.md`, prefer relative script paths such as:
+When a script runs from the skill directory, prefer a relative path:
 
 ```text
 scripts/example.py
 ```
 
-Use absolute paths only when the skill is installed locally and the path is intentionally fixed.
+When a script must run from another checkout, resolve `<skill_dir>` from the active `SKILL.md` and use `<skill_dir>/scripts/example.py`. Use a fixed absolute path only when the installation location is intentionally fixed.
 
 Prefer Python for skill scripts in this repository. Keep shell scripts only for thin wrappers around a Python entry point or for unavoidable platform glue.
 
 ## Review Record Convention
 
-GitHub PR review handling records use this path:
-
-```text
-reviews/<owner>-<repo>-<pr-number>.md
-```
-
-The table format is:
-
-```md
-| # | Status | ID | Link | Reply | Reply_ZH |
-| --- | --- | --- | --- | --- | --- |
-```
-
-Status values:
-
-- `待处理`
-- `处理中`
-- `已解决`
-- `已回复`
-- `已关闭`
-- `无需处理`
-- `需确认`
-- `暂缓`
+The canonical path, table, and status rules live in
+`skills/gh-pr-review-resolve/references/review-record.md` so installed copies
+remain self-contained.
 
 ## Syncing Installed Skills
 
