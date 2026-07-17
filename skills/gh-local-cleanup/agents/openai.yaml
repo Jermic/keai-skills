@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH Local Cleanup"
+  short_description: "Classify local Git branches and worktrees safely"
+  default_prompt: "Use $gh-local-cleanup to audit local branches and worktrees before cleanup."

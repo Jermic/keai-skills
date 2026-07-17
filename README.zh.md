@@ -24,6 +24,7 @@ npx skills add <github-owner>/keai-skills
 ```text
 gh-pr-review-scan
 gh-pr-review-resolve
+gh-local-cleanup
 zlibrary
 ```
 
@@ -48,6 +49,7 @@ keai-skills/
 └── skills/
     ├── gh-pr-review-scan/
     ├── gh-pr-review-resolve/
+    ├── gh-local-cleanup/
     └── zlibrary/
 ```
 
@@ -61,6 +63,7 @@ keai-skills/
 | --- | --- | --- | --- |
 | `gh-pr-review-scan` | 扫描多个仓库或多个 PR 的 review 状态 | 想知道哪些 open/draft PR 还有 review comments、resolved/unresolved thread 数量 | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-scan` |
 | `gh-pr-review-resolve` | 处理单个 PR 的 unresolved review threads | 想逐条判断评论是否已修、生成 Reply/Reply_ZH、保存 review 处理记录、回复并 resolve thread | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-resolve` |
+| `gh-local-cleanup` | 对照 GitHub 状态审计本地 branch 和 worktree | 想在删除本地 review checkout、已合并分支或完成的 worktree 前先获得分类清单 | `npx skills add <github-owner>/keai-skills/skills/gh-local-cleanup` |
 | `zlibrary` | 用内置 `Zlibrary.py` 处理 Z-Library 书籍 | 想搜索候选书、查看详情、下载选中的书、检查账号额度，或扩展 Z-Library API 能力 | `npx skills add <github-owner>/keai-skills/skills/zlibrary` |
 
 ## GitHub PR Review 工作流
