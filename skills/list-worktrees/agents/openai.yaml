@@ -1,0 +1,4 @@
+interface:
+  display_name: "List Worktrees"
+  short_description: "List Git worktrees with local and remote status"
+  default_prompt: "Use $list-worktrees to list every Git worktree in the scope I choose."
