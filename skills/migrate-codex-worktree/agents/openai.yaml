@@ -1,0 +1,6 @@
+interface:
+  display_name: "Migrate Codex Worktree"
+  short_description: "Repair a Codex task after its worktree path changes"
+  default_prompt: "Use $migrate-codex-worktree to print the safe migration command for this task."
+policy:
+  allow_implicit_invocation: false
