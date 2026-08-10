@@ -27,6 +27,7 @@ Available skill names after installation:
 gh-pr-review-scan
 gh-pr-review-resolve
 gh-local-cleanup
+notion-sync-markdown
 zlibrary
 ```
 
@@ -46,6 +47,7 @@ keai-skills/
     ├── gh-pr-review-scan/
     ├── gh-pr-review-resolve/
     ├── gh-local-cleanup/
+    ├── notion-sync-markdown/
     └── zlibrary/
 ```
 
@@ -60,6 +62,7 @@ keai-skills/
 | `gh-pr-review-scan` | Scan review status across multiple repositories or PRs. | Use when you want to see which open/draft PRs still have review comments and resolved/unresolved thread counts. | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-scan` |
 | `gh-pr-review-resolve` | Handle unresolved review threads for one PR. | Use when you want to judge comments one by one, generate Reply/Reply_ZH, save review records, reply, and resolve threads. | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-resolve` |
 | `gh-local-cleanup` | Audit local branches and worktrees against GitHub state. | Use when you want categorized cleanup candidates before removing local review checkouts, merged branches, or finished worktrees. | `npx skills add <github-owner>/keai-skills/skills/gh-local-cleanup` |
+| `notion-sync-markdown` | Sync local Markdown into an existing Notion page with minimal block replacements. | Use when local Markdown is the source of truth and unchanged Notion blocks and discussions should be preserved. | `npx skills add <github-owner>/keai-skills/skills/notion-sync-markdown` |
 | `zlibrary` | Work with Z-Library books through the bundled `Zlibrary.py`. | Use when you want to search candidate books, inspect details, download selected books, check account limits, or extend Z-Library API usage. | `npx skills add <github-owner>/keai-skills/skills/zlibrary` |
 
 ## GitHub PR Review Workflow

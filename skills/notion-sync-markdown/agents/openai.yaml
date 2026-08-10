@@ -1,0 +1,4 @@
+interface:
+  display_name: "Notion Sync Markdown"
+  short_description: "Safely sync Markdown into original Notion pages"
+  default_prompt: "Use $notion-sync-markdown to sync a local Markdown source into its original Notion page while preserving stable blocks and discussions."
