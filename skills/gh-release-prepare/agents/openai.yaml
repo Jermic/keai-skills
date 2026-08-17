@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH Release Prepare"
+  short_description: "Prepare paired feature and version bump release PRs"
+  default_prompt: "Use $gh-release-prepare to prepare the next release with separate feature and version bump PRs."
