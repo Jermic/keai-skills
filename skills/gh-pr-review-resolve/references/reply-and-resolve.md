@@ -7,7 +7,13 @@ Use this reference immediately before posting a reply or resolving a live GitHub
 1. Re-fetch unresolved threads immediately before acting.
 2. Select the requested item from that live result and run a dry run.
 3. Verify the requested thread's current code state, `threadId`, `latestCommentId`, path, line, URL, and exact reply body.
-4. If the user has not explicitly approved that exact thread and reply body, show the dry run and wait for approval.
+4. If the user has not explicitly approved that exact thread and reply body, show the dry run and ask them to reply with one numbered option:
+
+   1. Post this reply and resolve the thread
+   2. Revise the reply
+   3. Cancel
+
+   Option 1 is the required explicit approval. For option 2, ask for the replacement text, show the updated dry run, and request approval again.
 5. Use `--thread-id` with `--expect-comment-id` for the approved live call.
 6. Post the reply and resolve the thread.
 7. Re-fetch and confirm the thread is absent from unresolved results; report the reply URL and resolved state.

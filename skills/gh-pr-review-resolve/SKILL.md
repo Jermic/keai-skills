@@ -15,7 +15,13 @@ npx skills add Jermic/keai-skills/skills/gh-pr-review-scan
 
 1. Resolve the PR from a URL, `owner/repo#123`, `#123`, a number, or the current branch. This step is complete when `owner`, repository, and PR number are explicit.
 2. Fetch live unresolved threads with `scripts/fetch_unresolved_threads.py`. This step is complete only when the script exits successfully; pagination or truncation errors mean the result is incomplete.
-3. Complete only the requested branch using the matching reference below. The run is complete when that branch's completion criterion is satisfied.
+3. Complete only the requested branch using the matching reference below. If the request does not identify one branch, ask the user to reply with one numbered option:
+
+   1. Summarize or prioritize comments and draft replies (recommended)
+   2. Create or save a local review record
+   3. Reply to and resolve selected threads
+
+   The run is complete when the selected branch's completion criterion is satisfied.
 
 ## Branch References
 

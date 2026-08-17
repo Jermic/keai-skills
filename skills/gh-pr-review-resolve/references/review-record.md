@@ -38,7 +38,12 @@ Default flow: `待处理` -> `处理中` -> `已解决` -> `已回复` -> `已�
 
 ## Saving
 
-Unless the user already chose, ask whether to save and show, show only, save only, or do neither. Default to saving and showing.
+Unless the user already chose, ask them to reply with one numbered option:
+
+1. Save and show the record (recommended)
+2. Show it without saving
+3. Save it without showing
+4. Do neither
 
 Save under `reviews/<owner>-<repo>-<pr-number>.md` relative to the current checkout unless the user supplies a path. Preserve an existing record unless the user approves replacement; use a timestamp suffix for a separate record.
 

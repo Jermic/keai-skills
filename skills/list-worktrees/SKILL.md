@@ -5,7 +5,13 @@ description: "Use when the user asks to list Git worktree status for the current
 
 # List Worktrees
 
-1. Determine the scan scope. If the user has not chosen one, ask one short question offering: the current project's registered worktrees, a specified project or path, or every worktree under an agent-managed root. Ask for the exact agent root when its path is not known. Continue only when one scope is explicit.
+1. Determine the scan scope. If the user has not chosen one, ask them to reply with one numbered option:
+
+   1. Current project's registered worktrees (recommended)
+   2. A specified project or path
+   3. Every worktree under an agent-managed root
+
+   Ask for a path only after the user chooses option 2 or 3 and the exact path is not known. Continue only when one scope is explicit.
 2. Resolve `<skill_dir>` to this skill's directory and run exactly one read-only scan:
 
 ```bash
