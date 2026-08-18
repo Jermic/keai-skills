@@ -4,7 +4,7 @@
 
 Classify every fetched thread exactly once as **Fixed by current commit/diff**, **Still unresolved**, or **Needs decision**.
 
-Number threads by the live newest-first `latestCommentAt` order. For each item include priority, classification, `file:line`, reviewer, latest comment date, comment link, summary, and the next action.
+Number threads by the live newest-first `latestCommentAt` order. For each item include priority, classification, `file:line`, reviewer, latest comment date, comment link, the explicit comment ID as `Comment ID: <latestComment.databaseId>` on its own line, summary, and the next action.
 
 List fixed threads with suggested replies first, then still-unresolved and needs-decision threads by priority. When recency matters, summarize the whole thread while using its latest comment to determine ordering.
 
