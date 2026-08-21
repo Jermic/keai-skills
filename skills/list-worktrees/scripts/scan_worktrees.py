@@ -4,14 +4,18 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import shutil
 import subprocess
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 
-TABLE_HEADER = "| 序号 | 项目名 | Worktree | 分支 / HEAD | 工作区 | 远端情况 |"
-TABLE_RULE = "| ---: | --- | --- | --- | --- | --- |"
+TABLE_HEADER = "| 序号 | 项目名 | 分支 | HEAD | PR | 工作区 | 远端情况 | Worktree |"
+TABLE_RULE = "| ---: | --- | --- | --- | --- | --- | --- | --- |"
 
 
 class ScanError(RuntimeError):
@@ -47,6 +51,15 @@ class Worktree:
 @dataclass(frozen=True)
 class RemoteHeads:
     heads: dict[str, str] | None
+
+
+@dataclass(frozen=True)
+class PullRequest:
+    number: int
+    state: str
+    draft: bool
+    head_oid: str
+    head_owner: str
 
 
 def parse_worktrees(raw: str, repo: Path, project: str) -> list[Worktree]:
@@ -111,26 +124,47 @@ def discover_agent_worktrees(root: Path) -> list[Path]:
     return found
 
 
-def scan_projects(paths: list[Path]) -> list[Worktree]:
+def scan_projects(paths: list[Path]) -> tuple[list[Worktree], list[str]]:
     worktrees: dict[Path, Worktree] = {}
+    invalid: list[str] = []
     for path in paths:
-        for item in registered_worktrees(path.expanduser().resolve()):
+        try:
+            registered = registered_worktrees(path.expanduser().resolve())
+        except ScanError as error:
+            invalid.append(str(error))
+            continue
+        for item in registered:
             worktrees[item.path.resolve()] = item
-    return list(worktrees.values())
+    return list(worktrees.values()), invalid
 
 
-def scan_agent_roots(paths: list[Path]) -> list[Worktree]:
+def scan_agent_roots(paths: list[Path]) -> tuple[list[Worktree], list[str]]:
     worktrees: dict[Path, Worktree] = {}
+    invalid: list[str] = []
+    registered_cache: dict[Path, list[Worktree]] = {}
     for root in paths:
-        for path in discover_agent_worktrees(root.expanduser().resolve()):
-            repo = repo_root(path)
+        try:
+            discovered = discover_agent_worktrees(root.expanduser().resolve())
+        except ScanError as error:
+            invalid.append(str(error))
+            continue
+        for path in discovered:
+            try:
+                repo = repo_root(path)
+            except ScanError as error:
+                invalid.append(str(error))
+                continue
+            if repo not in registered_cache:
+                registered_cache[repo] = registered_worktrees(repo)
             item = next(
-                (candidate for candidate in registered_worktrees(repo) if candidate.path.resolve() == path),
+                (candidate for candidate in registered_cache[repo] if candidate.path.resolve() == path),
                 None,
             )
             if item:
                 worktrees[path] = item
-    return list(worktrees.values())
+            else:
+                invalid.append(f"不是 Git worktree：{path}")
+    return list(worktrees.values()), invalid
 
 
 def workspace_status(path: Path) -> str:
@@ -265,9 +299,7 @@ def remote_relation(
         prefix = "无 upstream；"
         if not run(["git", "remote", "get-url", remote], item.repo, check=False):
             return f"{prefix}无 origin"
-    common = Path(run(["git", "rev-parse", "--git-common-dir"], item.repo))
-    if not common.is_absolute():
-        common = (item.repo / common).resolve()
+    common = git_common_dir(item.repo)
     key = (common, remote)
     if key not in cache:
         cache[key] = read_remote_heads(item.repo, remote)
@@ -290,27 +322,164 @@ def detached_relation(item: Worktree, cache: dict[tuple[Path, str], RemoteHeads]
     return f"detached 基准：{branch}；{remote_relation(item, branch, cache)}"
 
 
+def github_slug(repo: Path) -> str | None:
+    """Resolve the GitHub owner/repo slug from the origin remote, if GitHub."""
+    remote = run(["git", "remote", "get-url", "origin"], repo, check=False)
+    if not remote:
+        return None
+    if remote.startswith("git@"):
+        host, _, path = remote.partition(":")
+        host = host.split("@", 1)[-1]
+    elif remote.startswith("http://") or remote.startswith("https://"):
+        host = urllib.parse.urlsplit(remote).netloc
+        path = urllib.parse.urlsplit(remote).path
+    else:
+        return None
+    if host != "github.com":
+        return None
+    slug = path.strip("/").removesuffix(".git")
+    return slug if "/" in slug else None
+
+
+def fetch_prs(repo: Path, slug: str | None) -> dict[str, list[PullRequest]]:
+    """Best-effort PR lookup via `gh`; returns {} when unavailable."""
+    if shutil.which("gh") is None or not slug:
+        return {}
+    environment = os.environ.copy()
+    environment.update({"GH_PROMPT_DISABLED": "1", "GIT_TERMINAL_PROMPT": "0"})
+    try:
+        result = subprocess.run(
+            [
+                "gh", "api", "--paginate", "--slurp",
+                f"/repos/{slug}/pulls?state=all&per_page=100",
+            ],
+            cwd=repo,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            env=environment,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return {}
+    if result.returncode:
+        return {}
+    try:
+        pages = json.loads(result.stdout)
+        records = [record for page in pages for record in page]
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    by_branch: dict[str, list[PullRequest]] = {}
+    try:
+        for record in records:
+            head = record.get("head") or {}
+            branch = head.get("ref")
+            if not branch:
+                continue
+            state = "MERGED" if record.get("merged_at") else str(record["state"]).upper()
+            owner = ((head.get("repo") or {}).get("owner") or {}).get("login") or ""
+            by_branch.setdefault(branch, []).append(
+                PullRequest(
+                    int(record["number"]),
+                    state,
+                    bool(record.get("draft")),
+                    str(head.get("sha") or ""),
+                    str(owner),
+                )
+            )
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return {}
+    return by_branch
+
+
+def git_common_dir(repo: Path) -> Path:
+    common = Path(run(["git", "rev-parse", "--git-common-dir"], repo))
+    if not common.is_absolute():
+        common = (repo / common).resolve()
+    return common
+
+
+def pr_cell(prs: list[PullRequest] | None, slug: str) -> str:
+    if not prs:
+        return "—"
+    parts = []
+    for pr in sorted(prs, key=lambda item: item.number):
+        state = "DRAFT" if pr.draft and pr.state == "OPEN" else pr.state
+        parts.append(f"[#{pr.number}](https://github.com/{slug}/pull/{pr.number}) {state}")
+    return "；".join(parts)
+
+
+def matching_prs(prs: list[PullRequest] | None, head: str, slug: str) -> list[PullRequest]:
+    candidates = prs or []
+    exact = [pr for pr in candidates if pr.head_oid == head]
+    if exact:
+        return exact
+    origin_owner = slug.partition("/")[0].casefold()
+    return [pr for pr in candidates if pr.head_owner.casefold() == origin_owner]
+
+
+def worktree_cell(path: Path) -> str:
+    uri = "file://" + urllib.parse.quote(str(path), safe="/")
+    return f"[{cell(path.name)}]({uri})"
+
+
 def cell(value: object) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
 
 
-def render(worktrees: list[Worktree], error: str | None = None) -> str:
+def render(worktrees: list[Worktree], error: str | None = None, invalid: list[str] | None = None) -> str:
     lines = [TABLE_HEADER, TABLE_RULE]
     if error:
-        lines.append(f"| — | — | {cell(error)} | — | — | — |")
+        lines.append(f"| — | — | — | — | — | — | — | {cell(error)} |")
         return "\n".join(lines)
     if not worktrees:
-        lines.append("| — | — | 未发现 worktree | — | — | — |")
+        lines.append("| — | — | — | — | — | — | — | 未发现 worktree |")
+        if invalid:
+            for entry in invalid:
+                lines.append(f"| — | — | — | — | — | — | — | {cell(entry)} |")
         return "\n".join(lines)
-    cache: dict[tuple[Path, str], RemoteHeads] = {}
+    remote_cache: dict[tuple[Path, str], RemoteHeads] = {}
+    pr_cache: dict[Path, dict[str, list[PullRequest]]] = {}
+    slug_cache: dict[Path, str | None] = {}
+    # Why: every worktree is its own toplevel, so item.repo differs per worktree
+    # even inside one repository. Group by the shared git-common-dir so gh and
+    # ls-remote round-trips happen once per repository, not once per worktree.
+    repos = {git_common_dir(item.repo): item.repo for item in worktrees}
+    # Why: ls-remote and gh round-trips dominate runtime; run them concurrently
+    # (bounded like orca's MAX_CONCURRENT=4) so N repos cost ~1 round-trip, not N.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        slug_futures = {common: pool.submit(github_slug, repo) for common, repo in repos.items()}
+        for common, future in slug_futures.items():
+            slug_cache[common] = future.result()
+        pr_futures = {
+            common: pool.submit(fetch_prs, repo, slug_cache[common])
+            for common, repo in repos.items()
+        }
+        remote_futures = {
+            common: pool.submit(read_remote_heads, repo, "origin")
+            for common, repo in repos.items()
+        }
+        for common, future in pr_futures.items():
+            pr_cache[common] = future.result()
+        for common, future in remote_futures.items():
+            remote_cache[(common, "origin")] = future.result()
     ordered = sorted(worktrees, key=lambda item: (item.project.casefold(), str(item.path).casefold(), str(item.path)))
     for index, item in enumerate(ordered, 1):
-        branch_head = f"{item.branch} @ {item.head[:8]}" if item.branch else f"detached @ {item.head[:8]}"
-        remote = remote_relation(item, item.branch, cache) if item.branch else detached_relation(item, cache)
+        branch = item.branch if item.branch else "detached"
+        head = item.head[:8]
+        remote = remote_relation(item, item.branch, remote_cache) if item.branch else detached_relation(item, remote_cache)
+        if item.branch:
+            common = git_common_dir(item.repo)
+            slug = slug_cache[common] or ""
+            prs = matching_prs(pr_cache[common].get(item.branch), item.head, slug)
+            pr_column = pr_cell(prs, slug)
+        else:
+            pr_column = "—"
         lines.append(
-            f"| {index} | {cell(item.project)} | {cell(item.path)} | {cell(branch_head)} | "
-            f"{cell(workspace_status(item.path))} | {cell(remote)} |"
+            f"| {index} | {cell(item.project)} | {cell(branch)} | {cell(head)} | {pr_column} | "
+            f"{cell(workspace_status(item.path))} | {cell(remote)} | {worktree_cell(item.path)} |"
         )
+    for entry in invalid or []:
+        lines.append(f"| — | — | — | — | — | — | — | {cell(entry)} |")
     return "\n".join(lines)
 
 
@@ -322,8 +491,16 @@ def self_check() -> None:
     assert format_remote_status("无 upstream；", head, "refs/heads/topic", "与远端同步") == "无 upstream；与远端同步"
     assert format_remote_status("无 upstream；", head, "refs/heads/missing", None) == "无 upstream；远端分支不存在"
     assert format_remote_status("无 upstream；", None, "refs/heads/topic", None) == "无 upstream；无法联网验证"
-    assert render([]).splitlines() == [TABLE_HEADER, TABLE_RULE, "| — | — | 未发现 worktree | — | — | — |"]
+    assert render([]).splitlines() == [TABLE_HEADER, TABLE_RULE, "| — | — | — | — | — | — | — | 未发现 worktree |"]
     assert cell("a|b\nc") == "a\\|b c"
+    assert worktree_cell(Path("/tmp/a b")) == "[a b](file:///tmp/a%20b)"
+    prs = [
+        PullRequest(274, "MERGED", False, "a" * 40, "readland"),
+        PullRequest(285, "OPEN", False, "b" * 40, "contributor"),
+    ]
+    assert pr_cell(prs, "readland/demo") == "[#274](https://github.com/readland/demo/pull/274) MERGED；[#285](https://github.com/readland/demo/pull/285) OPEN"
+    assert matching_prs(prs, "b" * 40, "readland/demo") == [prs[1]]
+    assert matching_prs(prs, "c" * 40, "readland/demo") == [prs[0]]
     print("self-check passed")
 
 
@@ -343,8 +520,8 @@ def main() -> int:
         return 0
     try:
         paths = [Path(value) for value in args.project or args.agent_root]
-        worktrees = scan_projects(paths) if args.project else scan_agent_roots(paths)
-        print(render(worktrees))
+        worktrees, invalid = scan_projects(paths) if args.project else scan_agent_roots(paths)
+        print(render(worktrees, invalid=invalid))
     except (OSError, ScanError, ValueError) as error:
         print(render([], str(error)))
     return 0

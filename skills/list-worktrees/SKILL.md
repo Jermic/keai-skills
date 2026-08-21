@@ -24,6 +24,12 @@ Use `--project` to include every worktree registered to each specified repositor
 
 3. Return the command's stdout verbatim. Output only the Markdown table, including for an invalid path or an empty scope. Add no introduction, summary, recommendation, or follow-up text. Complete the response when it contains exactly that one table.
 
-Keep the columns exactly `序号 | 项目名 | Worktree | 分支 / HEAD | 工作区 | 远端情况`. Preserve continuous numbering, branch or detached HEAD details, staged/unstaged/untracked counts, and the script's remote-verification wording. Treat cached tracking refs marked `非实时` only as fallback evidence.
+Keep the columns exactly `序号 | 项目名 | 分支 | HEAD | PR | 工作区 | 远端情况 | Worktree`. Preserve continuous numbering, branch or detached HEAD details, staged/unstaged/untracked counts, and the script's remote-verification wording. Treat cached tracking refs marked `非实时` only as fallback evidence.
+
+Column specifics:
+- `分支` and `HEAD` are separate columns; detached checkouts show `detached` in `分支`.
+- `PR` lists matching GitHub pull requests for the checked-out branch as `[#N](https://github.com/…) STATE` (OPEN / DRAFT / MERGED / CLOSED), multiple PRs joined by `；`. Requires the `gh` CLI authenticated against a GitHub `origin`; when unavailable the cell shows `—`. This lookup is best-effort and read-only — never fail the scan over it.
+- `Worktree` renders as a Markdown link `[目录名](file:///绝对路径)` — display shows only the directory name; the link points at the local path.
+- Directories that are not Git worktrees are appended as `—` rows rather than aborting the scan.
 
 Keep the scan read-only with optional Git locks disabled. Run no fetch, prune, checkout, switch, cleanup, or Git metadata write.

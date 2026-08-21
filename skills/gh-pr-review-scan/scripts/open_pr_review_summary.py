@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -219,10 +220,20 @@ def print_summary(repos: list[str], author: str, include_all_states: bool) -> No
             print(f"| [{repo}](https://github.com/{repo}) | - | - | No open/draft PR | - | - | - |")
             continue
 
+        # Why: thread stats are independent GraphQL round-trips per PR; fetch
+        # them concurrently (bounded like orca's MAX_CONCURRENT=4) instead of
+        # serializing N PRs, then print in original order.
+        stats: dict[int, tuple[int, int, int]] = {}
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {
+                pool.submit(fetch_thread_stats, owner, name, pull_request.number): pull_request.number
+                for pull_request in pull_requests
+            }
+            for future in futures:
+                stats[futures[future]] = future.result()
+
         for pull_request in pull_requests:
-            resolved, unresolved, review_comments = fetch_thread_stats(
-                owner, name, pull_request.number
-            )
+            resolved, unresolved, review_comments = stats[pull_request.number]
             total_comments = pull_request.conversation_comments + review_comments
             status = "DRAFT" if pull_request.is_draft else pull_request.state
             title = escape_markdown_cell(pull_request.title)
