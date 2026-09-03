@@ -17,9 +17,14 @@ npx skills add Jermic/keai-skills/skills/gh-pr-review-scan
 2. Fetch live unresolved threads with `scripts/fetch_unresolved_threads.py`. This step is complete only when the script exits successfully; pagination or truncation errors mean the result is incomplete.
 3. Complete only the requested branch using the matching reference below. If the request does not identify one branch, ask the user to reply with one numbered option:
 
-   1. Summarize or prioritize comments and draft replies (recommended)
-   2. Create or save a local review record
+   1. Summarize and classify unresolved comments (recommended)
+   2. Summarize and classify unresolved comments, then draft replies
    3. Reply to and resolve selected threads
+
+4. After option 1 or 2, unless the user already chose, ask whether to save the result:
+
+   A. Do not save a local record (recommended)
+   B. Save as `reviewcheck.md`
 
    The run is complete when the selected branch's completion criterion is satisfied.
 
@@ -27,8 +32,9 @@ npx skills add Jermic/keai-skills/skills/gh-pr-review-scan
 
 | User intent | Required reference |
 | --- | --- |
-| Summarize or prioritize unresolved comments; draft replies | Inspect the current diff for every referenced path, then classify every fetched thread using `references/reporting.md`. |
-| Create or save `reviewcheck.md` or another local handling record | Inspect the current diff for every referenced path, then assign every fetched thread a status from `references/review-record.md`. |
+| Summarize or prioritize unresolved comments without replies | Inspect the current diff for every referenced path, then classify every fetched thread using `references/reporting.md` without drafting replies. |
+| Summarize or prioritize unresolved comments and draft replies | Inspect the current diff for every referenced path, then classify every fetched thread and draft replies using `references/reporting.md`. |
+| Save `reviewcheck.md` or another local handling record after reporting | Assign every fetched thread a status using `references/review-record.md`; include reply columns only when replies were drafted. |
 | Reply to and resolve known threads | Read `references/reply-and-resolve.md`; verify only the requested live threads unless the user also asks for a full review. |
 
 ## Fetch Script

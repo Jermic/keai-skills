@@ -1,6 +1,6 @@
 # Local Review Record
 
-Use this reference when the user requests `reviewcheck.md`, a local handling record, or a table of review replies.
+Use this reference when the user chooses to save the review result as `reviewcheck.md` or another local handling record.
 
 ## Format
 
@@ -9,17 +9,19 @@ PR #<number> unresolved review threads 本地处理记录。
 
 编号按 GitHub unresolved threads 抓取顺序：
 
-| # | Status | ID | Link | Reply | Reply_ZH |
+| # | Status | ID | Link | Summary | Next action |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 已解决 | 3394352828 | [link](https://github.com/...#discussion_r3394352828) | Updated. ... | 已更新。... |
+| 1 | 已解决 | 3394352828 | [link](https://github.com/...#discussion_r3394352828) | 已通过当前改动修复。 | 回复并关闭评论。 |
 ```
 
 - `#`: current live unresolved-thread fetch order.
 - `Status`: one of the exact values below.
 - `ID`: numeric part of the review anchor; `#discussion_r3394352828` becomes `3394352828`.
 - `Link`: GitHub review comment URL.
-- `Reply`: copy-ready English GitHub reply.
-- `Reply_ZH`: Chinese translation or explanation; keep it local.
+- `Summary`: concise Chinese review result.
+- `Next action`: the next concrete handling step.
+
+When replies were drafted, append `Reply` and `Reply_ZH` columns. `Reply` is the copy-ready English GitHub reply; `Reply_ZH` is its Chinese translation or explanation and stays local. Do not create empty reply columns when replies were not requested.
 
 ## Status Values
 
@@ -38,13 +40,6 @@ Default flow: `待处理` -> `处理中` -> `已解决` -> `已回复` -> `已�
 
 ## Saving
 
-Unless the user already chose, ask them to reply with one numbered option:
-
-1. Save and show the record (recommended)
-2. Show it without saving
-3. Save it without showing
-4. Do neither
-
-Save under `reviews/<owner>-<repo>-<pr-number>.md` relative to the current checkout unless the user supplies a path. Preserve an existing record unless the user approves replacement; use a timestamp suffix for a separate record.
+Save as `reviewcheck.md` in the current checkout unless the user supplies another path. Preserve an existing record unless the user approves replacement; use a timestamp suffix for a separate record.
 
 The record branch is complete when its row count matches the fetched thread set, every row uses an allowed status, and a requested file contains the heading, ordering note, and full table.
