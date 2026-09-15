@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
+from fetch_unresolved_threads import parse_paginated_json
+
 
 SEARCH_QUERY = """
 query($searchQuery:String!, $endCursor:String) {
@@ -93,22 +95,6 @@ def run_gh(args: list[str]) -> str:
         raise SystemExit(exc.returncode)
 
     return result.stdout
-
-
-def parse_paginated_json(output: str) -> list[dict[str, Any]]:
-    decoder = json.JSONDecoder()
-    documents: list[dict[str, Any]] = []
-    index = 0
-
-    while index < len(output):
-        while index < len(output) and output[index].isspace():
-            index += 1
-        if index >= len(output):
-            break
-        document, index = decoder.raw_decode(output, index)
-        documents.append(document)
-
-    return documents
 
 
 def current_author() -> str:

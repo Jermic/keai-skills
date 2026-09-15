@@ -24,9 +24,11 @@ The command installs skills from the repository's `skills/<skill-name>/SKILL.md`
 Available skill names after installation:
 
 ```text
-gh-pr-review-scan
-gh-pr-review-resolve
+gh-pr-review
 gh-local-cleanup
+gh-release-prepare
+list-worktrees
+migrate-codex-worktree
 notion-sync-markdown
 zlibrary
 ```
@@ -44,9 +46,11 @@ keai-skills/
 ├── docs/
 │   └── creating-skills.md
 └── skills/
-    ├── gh-pr-review-scan/
-    ├── gh-pr-review-resolve/
+    ├── gh-pr-review/
     ├── gh-local-cleanup/
+    ├── gh-release-prepare/
+    ├── list-worktrees/
+    ├── migrate-codex-worktree/
     ├── notion-sync-markdown/
     └── zlibrary/
 ```
@@ -59,35 +63,23 @@ keai-skills/
 
 | Skill | Purpose | When to use | Install single skill |
 | --- | --- | --- | --- |
-| `gh-pr-review-scan` | Scan review status across multiple repositories or PRs. | Use when you want to see which open/draft PRs still have review comments and resolved/unresolved thread counts. | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-scan` |
-| `gh-pr-review-resolve` | Handle unresolved review threads for one PR. | Use when you want to judge comments one by one, generate Reply/Reply_ZH, save review records, reply, and resolve threads. | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review-resolve` |
+| `gh-pr-review` | PR review overview, comment analysis, reply drafts, and authorized actions. | Infer intent or specify scan / inspect / draft / record / reply / resolve. | `npx skills add <github-owner>/keai-skills/skills/gh-pr-review` |
 | `gh-local-cleanup` | Audit local branches and worktrees against GitHub state. | Use when you want categorized cleanup candidates before removing local review checkouts, merged branches, or finished worktrees. | `npx skills add <github-owner>/keai-skills/skills/gh-local-cleanup` |
+| `gh-release-prepare` | Prepare separate feature and version-bump release PRs. | Prepare separate feature and version-bump release PRs. | `npx skills add <github-owner>/keai-skills/skills/gh-release-prepare` |
+| `list-worktrees` | List worktrees and their local and remote status. | List worktrees and their local and remote status. | `npx skills add <github-owner>/keai-skills/skills/list-worktrees` |
+| `migrate-codex-worktree` | Print a repair command after a Codex worktree moves. | Print a repair command after a Codex worktree moves. | `npx skills add <github-owner>/keai-skills/skills/migrate-codex-worktree` |
 | `notion-sync-markdown` | Sync local Markdown into an existing Notion page with minimal block replacements. | Use when local Markdown is the source of truth and unchanged Notion blocks and discussions should be preserved. | `npx skills add <github-owner>/keai-skills/skills/notion-sync-markdown` |
 | `zlibrary` | Work with Z-Library books through the bundled `Zlibrary.py`. | Use when you want to search candidate books, inspect details, download selected books, check account limits, or extend Z-Library API usage. | `npx skills add <github-owner>/keai-skills/skills/zlibrary` |
 
 ## GitHub PR Review Workflow
 
-1. Use `gh-pr-review-scan` first for an overview and to find PRs that need attention.
-2. Use `gh-pr-review-resolve` for one PR to organize unresolved review threads.
-3. If a review record is generated, save it in the current project by default:
+`gh-pr-review` infers intent or accepts an explicit `scan / inspect / draft / record / reply / resolve` mode. Modes are independent entry points, not a mandatory pipeline. PR links read all unresolved threads; comment links read only the target and necessary parent context. Drafts follow the concise, outcome-first [reply style](skills/gh-pr-review/references/reply-style.md), grounded in final code.
 
+Results stay in chat by default; saving and remote actions follow the request. [Record format](skills/gh-pr-review/references/review-record.md) and [judgments/statuses](skills/gh-pr-review/references/reporting.md) each have one source of truth.
 
-```text
-reviews/<owner>-<repo>-<pr-number>.md
-```
+### Migrating Old Names
 
-Example:
-
-```text
-/reviews/keai-skills-1.md
-```
-
-Review records use this table format:
-
-```md
-| # | Status | ID | Link | Reply | Reply_ZH |
-| --- | --- | --- | --- | --- | --- |
-```
+`gh-pr-review-scan` and `gh-pr-review-resolve` are merged into `gh-pr-review`; the repository no longer provides the old entry points. Install the new skill, preserve any local customizations, then remove the two old installations through their original installation mechanism to avoid duplicate triggers. Use `gh-pr-review scan` for overviews, `inspect` for comment analysis, `draft` for replies, and `resolve` only for closing threads. These are agent mode instructions, not script subcommands.
 
 ## Maintenance
 

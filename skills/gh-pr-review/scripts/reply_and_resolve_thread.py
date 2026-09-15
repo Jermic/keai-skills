@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reply to a numbered unresolved PR review thread and resolve it."""
+"""Reply to a verified PR review thread and resolve it."""
 
 from __future__ import annotations
 
@@ -9,7 +9,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-from fetch_unresolved_threads import fetch, parse_ref
+from fetch_unresolved_threads import fetch, fetch_thread, parse_ref
+
+
+REPLY_MUTATION = """
+mutation($threadId:ID!, $body:String!) {
+  addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$threadId, body:$body}) {
+    comment { url }
+  }
+}
+"""
 
 
 RESOLVE_MUTATION = """
@@ -49,12 +58,12 @@ def read_body(args: argparse.Namespace) -> str:
 
 def main() -> int:
   parser = argparse.ArgumentParser(
-    description="Reply to a numbered unresolved PR review thread and resolve it.",
+    description=__doc__,
   )
   parser.add_argument(
     "pr",
     nargs="?",
-    help="PR URL, owner/repo#number, #number, number, or omitted to infer current PR.",
+    help="PR reference or comment permalink; omit to infer the current PR.",
   )
   parser.add_argument(
     "--index",
@@ -87,14 +96,15 @@ def main() -> int:
 
   pr = parse_ref(args.pr)
   body = read_body(args)
-  data = fetch(pr)
-  threads = data["unresolvedThreads"]
+  if pr.comment_id is not None and not args.thread_id:
+    raise SystemExit("A comment permalink requires its known --thread-id to resolve; no full-PR lookup is performed.")
   if args.thread_id:
-    thread = next((item for item in threads if item["id"] == args.thread_id), None)
-    if thread is None:
-      raise SystemExit(f"Unresolved thread id not found: {args.thread_id}")
-    number = threads.index(thread) + 1
+    thread = fetch_thread(pr, args.thread_id)
+    if thread["isResolved"]:
+      raise SystemExit("Thread is already resolved; no reply sent.")
+    number = None
   else:
+    threads = fetch(pr)["unresolvedThreads"]
     if args.index > len(threads):
       raise SystemExit(
         f"Thread index {args.index} is out of range; PR has {len(threads)} unresolved thread(s)."
@@ -124,20 +134,27 @@ def main() -> int:
     sys.stdout.write("\n")
     return 0
 
+  if args.expect_comment_id is None:
+    raise SystemExit("Live actions require --expect-comment-id from the inspected thread.")
+
   if not latest.get("databaseId"):
     raise SystemExit("Selected thread has no latest review comment databaseId to reply to.")
 
-  reply_raw = run(
-    [
-      "gh",
-      "api",
-      f"repos/{pr.owner}/{pr.repo}/pulls/{pr.number}/comments/{latest['databaseId']}/replies",
-      "-f",
-      f"body={body}",
-    ]
-  )
-  resolve_raw = run(
-    [
+  try:
+    reply_raw = run([
+      "gh", "api", "graphql", "-f", f"threadId={thread['id']}",
+      "-f", f"body={body}", "-f", f"query={REPLY_MUTATION}",
+    ])
+    reply_response = json.loads(reply_raw)
+    if reply_response.get("errors"):
+      raise RuntimeError("GitHub returned a reply error")
+    reply_url = reply_response["data"]["addPullRequestReviewThreadReply"]["comment"]["url"]
+    if not reply_url:
+      raise RuntimeError("GitHub did not return the reply URL")
+  except (subprocess.CalledProcessError, RuntimeError, KeyError, ValueError, TypeError) as error:
+    raise SystemExit(f"Reply not verified: {error}. Inspect this thread before retrying; resolution was not attempted.") from error
+  try:
+    resolve_raw = run([
       "gh",
       "api",
       "graphql",
@@ -145,13 +162,20 @@ def main() -> int:
       f"threadId={thread['id']}",
       "-f",
       f"query={RESOLVE_MUTATION}",
-    ]
-  )
-  reply_result = json.loads(reply_raw)
-  resolve_result = json.loads(resolve_raw)["data"]
+    ])
+    response = json.loads(resolve_raw)
+    if response.get("errors"):
+      raise RuntimeError("GitHub returned a resolution error")
+    resolve_result = response["data"]
+    if not resolve_result["resolveReviewThread"]["thread"]["isResolved"]:
+      raise RuntimeError("GitHub did not confirm resolution")
+    if not fetch_thread(pr, thread["id"])["isResolved"]:
+      raise RuntimeError("Live thread remains unresolved")
+  except (subprocess.CalledProcessError, RuntimeError, KeyError, ValueError, SystemExit) as error:
+    raise SystemExit(f"Reply posted: {reply_url}; resolution not verified: {error}. Do not resend the reply; inspect this thread and retry resolution only.") from error
   output = {
     **selected,
-    "replyUrl": reply_result["html_url"],
+    "replyUrl": reply_url,
     "isResolved": resolve_result["resolveReviewThread"]["thread"]["isResolved"],
   }
   json.dump(output, sys.stdout, ensure_ascii=False, indent=2)

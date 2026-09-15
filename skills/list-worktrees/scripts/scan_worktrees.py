@@ -418,8 +418,8 @@ def matching_prs(prs: list[PullRequest] | None, head: str, slug: str) -> list[Pu
 
 
 def worktree_cell(path: Path) -> str:
-    uri = "file://" + urllib.parse.quote(str(path), safe="/")
-    return f"[{cell(path.name)}]({uri})"
+    target = urllib.parse.quote(str(path), safe="/ ")
+    return f"[{cell(path.name)}](<{target}>)"
 
 
 def cell(value: object) -> str:
@@ -493,7 +493,7 @@ def self_check() -> None:
     assert format_remote_status("无 upstream；", None, "refs/heads/topic", None) == "无 upstream；无法联网验证"
     assert render([]).splitlines() == [TABLE_HEADER, TABLE_RULE, "| — | — | — | — | — | — | — | 未发现 worktree |"]
     assert cell("a|b\nc") == "a\\|b c"
-    assert worktree_cell(Path("/tmp/a b")) == "[a b](file:///tmp/a%20b)"
+    assert worktree_cell(Path("/tmp/a b")) == "[a b](</tmp/a b>)"
     prs = [
         PullRequest(274, "MERGED", False, "a" * 40, "readland"),
         PullRequest(285, "OPEN", False, "b" * 40, "contributor"),

@@ -9,7 +9,7 @@ Treat local Markdown as the only source of truth. Use any `.notion.md` file only
 
 ## Safe Workflow
 
-1. Locate the original page with Notion search and fetch it with `include_discussions=true`. Do not create a replacement page.
+1. Fetch the supplied page ID or URL directly with `include_discussions=true`; use Notion search only when the target is not explicit. Do not create a replacement page.
 2. Back up all discussions with `get_comments(include_all_blocks=true, include_resolved=true)` before any write. Keep the full thread text, authors, timestamps, resolved state, discussion IDs, and block anchors.
 3. Read `notion://docs/enhanced-markdown-spec` in the current run. The format and tool surface can change; do not rely on remembered syntax.
 4. Extract only the fetched `<content>`. Identify leading `<unknown>`, `<page>`, `<database>`, `<folder>`, synced, meeting-note, or other external-object blocks that are absent from the local source. Preserve those blocks verbatim and record their count.

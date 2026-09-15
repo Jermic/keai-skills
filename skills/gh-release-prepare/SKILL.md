@@ -37,9 +37,11 @@ Then inspect:
 - the base, head, state, and draft status of every matching PR;
 - the repository toolchain, current project version source of truth, lock root-package version, and recent version-bump commit and diff.
 
-Classify each intended branch and worktree as `create`, `reuse`, or `blocked`. Present collisions and dirty state before any write. For each matching PR, show its evidence and ask whether to reuse it, retarget it, or create a new PR; default to creating the intended PR when no match exists.
+Classify each intended branch and worktree as `create`, `reuse`, or `blocked`. Present collisions and dirty state before any write. Reuse a unique PR whose head, base, and state match the intended outcome, and report that choice. Ask only for ambiguous matches or an unapproved retarget/recreation; reuse prior explicit authorization for the same target and action. With no match, create the intended PR within the authorized preparation scope.
 
-This step is complete when both versions and the previous-release SHA are resolved from live remote evidence; feature baseline, complete local diff, project version source, and lock root version are recorded; every branch, worktree, and matching PR has exactly one classification; every detected PR match has an explicit handling choice; and all proposed writes are listed.
+This step is complete when both versions and the previous-release SHA are resolved from live remote evidence; feature baseline, complete local diff, project version source, and lock root version are recorded; every branch, worktree, and matching PR has exactly one classification; every detected PR match has a recorded handling choice; and all proposed writes are listed.
+
+Record each content audit against its base SHA and head SHA, and each check against the checked content and environment. Later steps refresh identifiers first and reuse unchanged results. Re-audit affected ranges only when a base/head changes, and rerun checks only when relevant content or environment changes or a failure remains. Keep final live remote and PR-state verification.
 
 ## 3. Establish the release baseline
 
@@ -62,7 +64,7 @@ Otherwise, classify the feature state and complete exactly one path:
 
 After feature content is final, run the smallest existing feature-related checks and `git diff --check` on the working diff or intended committed feature range, as applicable, before any feature commit or push. Classify permission, authentication, network, and cache failures as environment failures; classify assertion, compilation, lint, type, and content failures as content failures.
 
-For a working-tree patch, stage only current-task paths or hunks, inspect the complete staged diff, run `git diff --staged --check`, and commit according to the repository's Git rules. Verify that unrelated staged and unstaged changes remain preserved.
+For a working-tree patch, stage only current-task paths or hunks, inspect the complete staged diff, and commit according to the repository's Git rules. Run `git diff --staged --check` only if staging changed the patch covered by the earlier whitespace check. Verify that unrelated staged and unstaged changes remain preserved.
 
 Publish according to remote state:
 
@@ -74,19 +76,19 @@ This step is complete when the feature is verified as already merged, or its fin
 
 ## 5. Prepare the independent version bump
 
-Create an independent worktree whose path and `chore/bump-version-<next>` branch follow the target repository's naming rules. Refresh `origin/release/<next>`, confirm that its history still matches the Step 3 audit, and record its current tip as `BUMP_BASE_SHA`. Create the bump branch from that exact tip. On first release creation `BUMP_BASE_SHA` equals `PREVIOUS_RELEASE_SHA`; on recovery it may include audited merged feature commits.
+Create or reuse the independent bump worktree and `chore/bump-version-<next>` branch according to the preflight classification and target repository naming rules. Before reuse, verify its checked-out branch, clean or understood task-local changes, baseline ancestry, and version-only diff; preserve unrelated work. Refresh `origin/release/<next>` and reconcile it with the Step 3 audit. For creation, record its tip as `BUMP_BASE_SHA` and branch from that exact tip. For reuse, retain and verify the existing bump baseline rather than claiming the branch was created from the current tip; account for any later release commits before continuing.
 
 Use the version-source and toolchain evidence recorded in Step 2. Apply the next version only to the project's own version source and required lock root-package entry. Review generated lock changes by field and section; keep dependency versions and resolution metadata unchanged.
 
-After bump content is final, run the repository's existing lock consistency check and `git diff --check`. Then stage only the permitted version source and lock root-package changes, inspect the complete staged diff, run `git diff --staged --check`, and commit according to the repository's Git rules. Push normally and verify the remote bump SHA.
+After bump content is final, run the repository's existing lock consistency check and `git diff --check`. Then stage only the permitted version source and lock root-package changes, inspect the complete staged diff, and commit according to the repository's Git rules. Repeat the whitespace check on the staged diff only if staging changed the checked patch. Push normally and verify the remote bump SHA.
 
 If `origin/release/<next>` moves after `BUMP_BASE_SHA` is recorded, fetch the new tip and re-verify bump ancestry and the complete PR diff before PR creation or mutation. Account for every new release commit rather than carrying the old audit forward.
 
-This step is complete when the independent bump worktree and branch start from the audited `BUMP_BASE_SHA`; the committed diff contains only the project version source and required lock root-package version; dependency data is unchanged; lock and diff checks pass or have an exact environment gap; and local and remote bump SHAs match.
+This step is complete when the created or reused bump worktree and branch have the verified `BUMP_BASE_SHA` ancestry; the committed diff contains only the project version source and required lock root-package version; dependency data is unchanged; lock and diff checks pass or have an exact environment gap; and local and remote bump SHAs match.
 
 ## 6. Audit the prepared branches
 
-Before creating or changing PRs, inspect each open head's live remote range against `origin/release/<next>`; for an already-merged feature, inspect its live PR head and merge diff instead:
+Before creating or changing PRs, refresh the base and head SHAs and reuse the audit for unchanged ranges. Inspect changed open ranges against `origin/release/<next>`; for an already-merged feature, reconcile its live PR head and merge evidence with the recorded audit:
 
 - Feature contains only the intended functionality and its recorded error or boundary handling.
 - Bump contains only the project version and required lock root-package change.
@@ -132,7 +134,7 @@ Use this final summary table, localizing headers to the user's language when use
 After the table, list only:
 
 - each project's feature and bump validation results;
-- pytest or environment gaps, when present;
+- validation or environment gaps, when present;
 - each worktree's clean, sync, and deletion eligibility;
 - the boundary that merge, tag, deploy, release-back, and branch or worktree deletion were not executed.
 

@@ -8,10 +8,10 @@ python3 <skill_dir>/scripts/zlibrary_cli.py download --id <book-id> --hash <book
 
 ## 工作流
 
-1. 先搜索并展示编号结果。
-2. 等用户选择编号，取该结果的 `id` 和 `hash`。
-3. 下载前默认检查 `getDownloadsLeft()`；额度为 0 时不要下载。
-4. 调用 `scripts/Zlibrary.py` 的 `downloadBook({"id": id, "hash": hash})`。
+1. 已有明确 `id/hash` 或用户已选中本轮结果时直接沿用；只有目标不明确时才搜索并让用户选择。
+2. 调用 `scripts/zlibrary_cli.py download`。CLI 已在下载前检查额度，并在结束后返回剩余额度，不额外运行 `quota`。
+3. 直接使用底层 API 时才自行检查 `getDownloadsLeft()`，额度为 0 时停止；未知额度明确报告，不当作 0。
+4. 保留 CLI 的文件名清理、冲突处理和空文件检查；需要底层 API 扩展时沿用这些保护。
 5. 下载完成后验证文件存在且非空，只报告本地路径、文件大小、剩余额度。
 
 ## 注意

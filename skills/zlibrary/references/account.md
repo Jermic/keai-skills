@@ -35,7 +35,7 @@ python3 <skill_dir>/scripts/zlibrary_cli.py profile
 ## 规则
 
 1. 输出只使用遮蔽后的密码、token 和 `remix_userkey`。
-2. 下载前调用 `quota` 或 `getDownloadsLeft()`；`null` 或查询错误表示额度未知，不等于 `0`。
+2. `download` CLI 已包含下载前的额度检查，无需额外调用 `quota`；直接使用底层 API 时才自行调用 `getDownloadsLeft()`。`null` 或查询错误表示额度未知，不等于 `0`。
 3. 登录失败时提示检查凭据或镜像域名，只返回非敏感错误信息。
 
 ## 完成条件

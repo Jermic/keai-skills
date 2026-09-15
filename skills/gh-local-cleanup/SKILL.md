@@ -32,13 +32,7 @@ Preserve the user's language when presenting the generated tables. Call out curr
 
 Show the branch and worktree tables before changing Git state. State whether the proposed action removes a worktree, a local branch, or both. Treat remote branch deletion as a separate action outside this skill's default scope.
 
-After the tables, ask the user to reply with one numbered option, omitting any option that has no eligible items:
-
-1. Remove every `DELETE` candidate (recommended)
-2. Choose specific `DELETE` or `CONFIRM` items
-3. Cancel cleanup
-
-If the user chooses option 2, present every eligible item as a numbered list, including its category and whether the action removes a worktree, a local branch, or both, then ask them to reply with the item numbers. The confirmation step is complete only when the user has selected an exact category or exact numbered items to remove.
+For audit-only requests, finish after the tables without a deletion prompt. For cleanup requests, show all eligible items with stable numbers, categories, and the exact branch/worktree actions in one list. Ask once for the item numbers or the complete `DELETE` category unless that exact scope was already approved against unchanged evidence. New candidates are not included in an earlier approval. If no items are eligible, finish without asking.
 
 ## Clean
 

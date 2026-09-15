@@ -22,7 +22,7 @@ description: "Use when the user wants a Z-Library book workflow: search, inspect
 1. 根据用户意图先读对应 `references/*.md`；该分支的完成条件也在对应 reference 中。
 2. 保持 `scripts/Zlibrary.py` 原样；新增能力在 `scripts/` 包装并 import 基础库。
 3. 输出只包含遮蔽后的鉴权信息。
-4. 下载前先让用户从搜索结果里确认目标，除非用户已经给出明确的 `id` 和 `hash`。
+4. 下载沿用用户提供的明确 `id/hash` 或本轮已选结果；仅目标不明确时才搜索并确认，不重复询问已选书籍。
 5. 搜索结果默认用编号表格展示，方便用户后续说"下载第 2 本"。
 
 ## 鉴权

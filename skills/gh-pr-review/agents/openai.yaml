@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH PR Review"
+  short_description: "Inspect PR feedback, draft replies, and handle threads"
+  default_prompt: "Use $gh-pr-review to inspect this PR's comments or perform the review action I specify."

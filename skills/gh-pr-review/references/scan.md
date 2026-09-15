@@ -1,23 +1,14 @@
----
-name: gh-pr-review-scan
-description: "Use when the user wants a GitHub PR review scan across repositories, including open or draft PRs and resolved or unresolved review counts."
----
+# Scan PR Review Status
 
-# GitHub PR Review Scan
+Use only for a requested PR overview. Resolve `<skill_dir>` to the parent skill directory, not this references directory.
 
 ## Overview
 
 Query GitHub with `gh` and produce a Markdown table of PRs authored by the current authenticated user. Default to open PRs; label open drafts as `DRAFT`.
 
-This skill remains PR-level and works independently. For thread-level handling inside one PR, switch to `gh-pr-review-resolve` when it is installed. If it is unavailable, return the scan only and offer:
-
-```bash
-npx skills add Jermic/keai-skills/skills/gh-pr-review-resolve
-```
-
 ## Quick Start
 
-Resolve `<skill_dir>` to the directory containing this `SKILL.md`, then run the bundled script from any checkout:
+Resolve `<skill_dir>` to the parent skill directory, then run the bundled script from any checkout:
 
 ```bash
 python3 <skill_dir>/scripts/open_pr_review_summary.py <owner>/<repo-a> <owner>/<repo-b> <owner>/<repo-c>
@@ -41,7 +32,7 @@ The script outputs a Markdown table with clickable repo and PR links:
 ## Workflow
 
 1. Run the bundled script with every requested repository. This step is complete when every repository has a result row and the script exits successfully.
-2. Return the generated table directly, preserving Markdown links. The scan is complete when every matching PR has status and comment counts, including all paginated review threads.
+2. Present the generated table using the skill language policy: localize headings, state labels, empty-result messages, and explanations while preserving their meanings, counts, order, IDs, and Markdown links. Keep original PR titles as source text unless translation is requested. The scan is complete when every matching PR has status and comment counts, including all paginated review threads.
 3. If `gh` authentication or network access fails, report that failure instead of presenting a partial table as complete.
 
 ## Options
