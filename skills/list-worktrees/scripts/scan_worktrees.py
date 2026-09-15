@@ -495,12 +495,12 @@ def self_check() -> None:
     assert cell("a|b\nc") == "a\\|b c"
     assert worktree_cell(Path("/tmp/a b")) == "[a b](</tmp/a b>)"
     prs = [
-        PullRequest(274, "MERGED", False, "a" * 40, "readland"),
-        PullRequest(285, "OPEN", False, "b" * 40, "contributor"),
+        PullRequest(1, "MERGED", False, "a" * 40, "example-org"),
+        PullRequest(2, "OPEN", False, "b" * 40, "contributor"),
     ]
-    assert pr_cell(prs, "readland/demo") == "[#274](https://github.com/readland/demo/pull/274) MERGED；[#285](https://github.com/readland/demo/pull/285) OPEN"
-    assert matching_prs(prs, "b" * 40, "readland/demo") == [prs[1]]
-    assert matching_prs(prs, "c" * 40, "readland/demo") == [prs[0]]
+    assert pr_cell(prs, "example-org/demo") == "[#1](https://github.com/example-org/demo/pull/1) MERGED；[#2](https://github.com/example-org/demo/pull/2) OPEN"
+    assert matching_prs(prs, "b" * 40, "example-org/demo") == [prs[1]]
+    assert matching_prs(prs, "c" * 40, "example-org/demo") == [prs[0]]
     print("self-check passed")
 
 
